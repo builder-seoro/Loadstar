@@ -7,6 +7,12 @@ description: Check implementation against the UX lock. Use during execution, rev
 
 Catch drift between approved product shape and delivered UI/UX.
 
+Guard runs in two modes. In **pre-lock** mode it is a shape check whose only
+inputs are shape-lock.md, the approved wireframe/preview, and
+responsive-matrix.json. In **post-implementation** mode it is a drift check that
+additionally reads build-evidence.json, review-report.json, and
+browser/screenshot evidence. Supply only the inputs for your mode.
+
 ## Workflow
 
 1. Compare delivered product with shape-lock.md and preview evidence.
@@ -22,4 +28,4 @@ Catch drift between approved product shape and delivered UI/UX.
 
 ## Output
 
-Produce `guard-report.json`. Read `references/guard-contract.md` for the exact contract.
+Produce `guard-report.json` and validate it with `python scripts/lodestar.py validate guard-report <path>` (template at `templates/guard-report.json`; required fields `status`, `summary`, and a non-empty `checks` list). Advance the proof-bundle gate with `python scripts/lodestar.py proof-gate --run-dir .lodestar/runs/<run-id> --gate ux_guard --status pass --evidence "..." --artifact .lodestar/runs/<run-id>/guard-report.json`. Read `references/guard-contract.md` for the exact contract.

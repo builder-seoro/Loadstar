@@ -136,6 +136,23 @@
         "spec_gate": { "const": "pass" },
         "analyze_gate": { "const": "pass" }
       }
+    },
+    "spec_evidence": {
+      "type": "object",
+      "description": "Per-category spec-gate evidence: each value is either a string list of statements or a {status, reason} not-applicable marker.",
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          {
+            "type": "object",
+            "required": ["status", "reason"],
+            "properties": {
+              "status": { "enum": ["not_applicable"] },
+              "reason": { "type": "string", "minLength": 1 }
+            }
+          }
+        ]
+      }
     }
   }
 }

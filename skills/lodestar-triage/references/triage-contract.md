@@ -56,6 +56,13 @@ action, and — for user-owned decisions — a one-line, product-language questi
 routed to `lodestar-call`. Carry enough evidence for `lodestar-lock` to verify
 the policy.
 
+Also append every accepted decision to `.lodestar/runs/<run-id>/decision-log.jsonl`
+as one JSON object per line, each including at least
+`{"status": "accepted", "decision": "...", "source": "..."}`. A template exists
+at `templates/decision-log.jsonl`. This append-only file is the canonical
+decision log the spec gate reads via `--decision-log decision-log.jsonl`, so
+downstream lock and checklist skills can verify accepted decisions.
+
 ## Gate Rules
 
 - Mechanical choices may be auto-resolved with evidence.

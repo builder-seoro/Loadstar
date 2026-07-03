@@ -38,7 +38,7 @@ PHASES = {
     "intent-brief",
     "decision-classify",
     "decision-card",
-    "design-system-lite",
+    "design-system",
     "ux-preview",
     "ux-approval",
     "ux-guard",
@@ -180,6 +180,8 @@ BROWSER_VIEWPORTS = {
     "tablet": {"width": 834, "height": 1112},
     "mobile": {"width": 390, "height": 844},
 }
+RESPONSIVE_MATRIX_VIEWPORTS = ("mobile", "tablet", "desktop")
+RESPONSIVE_MATRIX_STATUSES = {"pass", "fail"}
 
 CE_TRIGGER_KINDS = {
     "build_failure",
@@ -254,6 +256,7 @@ RUNNER_TRANSITIONS = {
     ("COMPOUNDING", "debrief-brief-ready"): "FIXING",
     ("FIXING", "amendment-needed"): "AMENDMENT_PENDING",
     ("AMENDMENT_PENDING", "amendment-approved"): "PRODUCT_LOCKED",
+    ("AMENDMENT_PENDING", "amendment-rejected"): "FIXING",
     ("HANDOFF_READY", "handoff-ready"): "HANDOFF_READY",
 }
 
@@ -276,9 +279,12 @@ TASK_TRANSITIONS = {
     ("TASK_READY", "implementation-started"): ("IMPLEMENTING", "in-progress", "implementation_attempts"),
     ("IMPLEMENTING", "implementation-ready"): ("BUILDING", "in-progress", None),
     ("IMPLEMENTING", "implementation-blocked"): ("TASK_BLOCKED", "blocked", None),
-    ("BUILDING", "build-pass"): ("REVIEWING", "in-progress", "build_attempts"),
+    # Attempt counters increment on FAILURE events only, so a value of >= 2 means the
+    # task genuinely failed that phase twice (see collect_task_attempt_evidence). The
+    # matching pass events carry no counter key so a first-try success is never counted.
+    ("BUILDING", "build-pass"): ("REVIEWING", "in-progress", None),
     ("BUILDING", "build-fail"): ("FIXING", "in-progress", "build_attempts"),
-    ("REVIEWING", "reviewer-approve"): ("MERGE_READY", "in-progress", "review_attempts"),
+    ("REVIEWING", "reviewer-approve"): ("MERGE_READY", "in-progress", None),
     ("REVIEWING", "reviewer-reject"): ("FIXING", "in-progress", "review_attempts"),
     ("REVIEWING", "amendment-needed"): ("AMENDMENT_PENDING", "in-progress", None),
     ("MERGE_READY", "merge-pass"): ("TASK_DONE", "done", None),
@@ -289,7 +295,16 @@ TASK_TRANSITIONS = {
     ("FIXING", "amendment-needed"): ("AMENDMENT_PENDING", "in-progress", None),
     ("COMPOUNDING", "debrief-brief-ready"): ("FIXING", "in-progress", None),
     ("AMENDMENT_PENDING", "amendment-approved"): ("IMPLEMENTING", "in-progress", None),
+    ("AMENDMENT_PENDING", "amendment-rejected"): ("FIXING", "in-progress", None),
+    # TASK_BLOCKED is recoverable: new context resumes the task, or a product-impacting
+    # blocker escalates to the amendment advisor. Without these it was a permanent dead end.
+    ("TASK_BLOCKED", "unblocked"): ("IMPLEMENTING", "in-progress", "fix_attempts"),
+    ("TASK_BLOCKED", "amendment-needed"): ("AMENDMENT_PENDING", "in-progress", None),
 }
+
+# Bound the FIXING -> IMPLEMENTING retry loop: after this many fix cycles a task must
+# escalate (ce-needed or amendment-needed) instead of blindly retrying forever.
+MAX_FIX_ATTEMPTS = 3
 
 TASK_GATE_DEFAULTS = {
     "implementation": "pending",

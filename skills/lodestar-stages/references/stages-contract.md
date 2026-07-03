@@ -34,7 +34,7 @@ After task split passes, the spec is considered SDD-ready. Start the execution
 driver with:
 
 ```powershell
-lodestar.py execution-start --task-graph task-graph.json --spec locked-spec.json --run-dir .lodestar/runs/<run-id>
+python scripts/lodestar.py execution-start --task-graph task-graph.json --spec locked-spec.json --run-dir .lodestar/runs/<run-id>
 ```
 
 This creates `execution-plan.json`, `tasks/<task-id>/state.json`,

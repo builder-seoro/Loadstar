@@ -22,4 +22,4 @@ Resolve decision branches until the harness and user share product understanding
 
 ## Output
 
-Produce `shakedown-decisions.jsonl`. Read `references/shakedown-contract.md` for the exact contract.
+Produce `shakedown-decisions.jsonl`. Also append every accepted decision to `.lodestar/runs/<run-id>/decision-log.jsonl`, one JSON object per line, each including at least `{"status": "accepted", "decision": "...", "source": "..."}` (template at `templates/decision-log.jsonl`). This is the canonical decision log the spec gate reads. Read `references/shakedown-contract.md` for the exact contract.

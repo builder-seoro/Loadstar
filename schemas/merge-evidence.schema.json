@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Lodestar Merge Evidence",
+  "type": "object",
+  "required": ["task_id", "status", "summary"],
+  "properties": {
+    "task_id": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["pass", "fail"] },
+    "summary": { "type": "string", "minLength": 1 },
+    "branch": { "type": "string", "minLength": 1 },
+    "base": { "type": "string", "minLength": 1 },
+    "conflicts": { "type": "array", "items": { "type": "string" } },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["cmd", "status"],
+        "properties": {
+          "cmd": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

@@ -38,6 +38,12 @@ def read_upstream_map(root: Path, map_path: str | None = None) -> dict[str, Any]
     path = Path(map_path) if map_path else root / "references" / "upstream-map.json"
     if not path.is_absolute():
         path = root / path
+    if not path.exists():
+        raise LodestarError(
+            f"Upstream map not found at {path}. The dry-run, init-run, and upstream-check "
+            f"commands read references/ and third_party/ from the working directory, so run them "
+            f"from a Lodestar source checkout or pass --root <path-to-checkout>."
+        )
     upstream_map = read_json(path)
     fail_if_errors(validate_upstream_map_obj(upstream_map, root))
     return upstream_map

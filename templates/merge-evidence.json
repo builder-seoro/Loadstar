@@ -1,0 +1,11 @@
+{
+  "task_id": "T1",
+  "status": "pass",
+  "branch": "task/example-feature",
+  "base": "main",
+  "conflicts": [],
+  "commands": [
+    { "cmd": "git merge --no-ff task/example-feature", "status": "pass" }
+  ],
+  "summary": "Integrated the reviewed task branch into the integration branch with no conflicts."
+}
