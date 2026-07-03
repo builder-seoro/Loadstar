@@ -489,6 +489,7 @@ def run_dry_run(out_dir: Path) -> dict[str, Any]:
             "browser_evidence": "browser-evidence.json",
             "proof_bundle": "proof-bundle.json",
         },
+        responsive_matrix=responsive_matrix,
     )
     fail_if_errors(validate_quality_report_obj(quality_report))
     debrief = build_debrief(

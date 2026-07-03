@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import json
 import shutil
@@ -29,21 +30,77 @@ def utc_now() -> str:
 
 def read_json(path: Path) -> dict[str, Any]:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        # utf-8-sig tolerates a UTF-8 BOM (common on Windows editors) without leaving
+        # a stray ﻿ at the front of the first key.
+        return json.loads(path.read_text(encoding="utf-8-sig"))
     except FileNotFoundError as exc:
         raise LodestarError(f"File not found: {path}") from exc
+    except UnicodeDecodeError as exc:
+        raise LodestarError(f"File is not valid UTF-8: {path}: {exc}") from exc
     except json.JSONDecodeError as exc:
         raise LodestarError(f"Invalid JSON in {path}: {exc}") from exc
 
 
-def write_json(path: Path, data: dict[str, Any]) -> None:
+def atomic_write_text(path: Path, text: str) -> None:
+    """Write text so a crash or a concurrent reader never sees a half-written file.
+
+    Writes to a temp file in the same directory, fsyncs, then os.replace()s into
+    place (atomic on POSIX and on Windows/NTFS). Prevents the truncate-then-write
+    window that could brick a run's state.json.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    fd, tmp_name = tempfile.mkstemp(dir=str(path.parent), prefix=".lodestar-tmp-", suffix=path.suffix or ".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_name, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
+
+
+def write_json(path: Path, data: dict[str, Any]) -> None:
+    atomic_write_text(path, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
 
 
 def write_text(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+    atomic_write_text(path, text)
+
+
+def branch_path_safe(value: str) -> str:
+    # Lives in core so validators (task_write_scope) and execution both reach it via
+    # `from .core import *`; it used to be defined only in execution, which raised
+    # NameError whenever a task omitted write_scope and validators had to derive it.
+    allowed = []
+    for char in value.lower().strip():
+        if char.isalnum():
+            allowed.append(char)
+        elif char in ("-", "_", "/", "."):
+            allowed.append(char)
+        elif char.isspace():
+            allowed.append("-")
+    return "".join(allowed).strip("-") or "task"
+
+
+_SAFE_SEGMENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def safe_path_segment(value: Any) -> bool:
+    """True when value is safe to use verbatim as a single file/directory name.
+
+    Rejects path separators, drive/parent traversal, and reserved dot-names so a
+    task id can never escape its run directory or collide with another task's dir.
+    """
+    if not isinstance(value, str) or not value or value in {".", ".."}:
+        return False
+    if "/" in value or "\\" in value or ":" in value:
+        return False
+    return bool(_SAFE_SEGMENT.match(value))
 
 
 def attrs_dict(attrs: list[tuple[str, str | None]]) -> dict[str, str]:

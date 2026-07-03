@@ -25,5 +25,12 @@ Repository = "https://github.com/builder-seoro/lodestar"
 [project.scripts]
 lodestar = "lodestar:main"
 
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0", "jsonschema>=4.0.0"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/lodestar"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

@@ -201,6 +201,10 @@ def command_validate(args: argparse.Namespace) -> dict[str, Any]:
         warnings = task_graph_parallel_warnings(task_graph)
     elif args.kind == "build-evidence":
         fail_if_errors(validate_build_evidence_obj(read_json(path)))
+    elif args.kind == "merge-evidence":
+        fail_if_errors(validate_merge_evidence_obj(read_json(path)))
+    elif args.kind == "guard-report":
+        fail_if_errors(validate_guard_report_obj(read_json(path)))
     elif args.kind == "review-report":
         fail_if_errors(validate_review_report_obj(read_json(path)))
     elif args.kind == "amendment-request":
@@ -262,6 +266,7 @@ def command_quality_gate(args: argparse.Namespace) -> dict[str, Any]:
     ux_lock_path = artifact_path(run_dir, args.ux_lock, "shape-lock.md")
     proof_bundle_path = artifact_path(run_dir, args.proof_bundle, "proof-bundle.json")
     browser_evidence_path = artifact_path(run_dir, args.browser_evidence, "browser-evidence.json")
+    responsive_matrix_path = artifact_path(run_dir, args.responsive_matrix, "responsive-matrix.json")
 
     spec = read_json(spec_path)
     execution_plan = read_json(execution_plan_path)
@@ -270,6 +275,7 @@ def command_quality_gate(args: argparse.Namespace) -> dict[str, Any]:
     ux_lock_text = read_optional_text(ux_lock_path, "UX lock")
     proof_bundle = read_optional_json(proof_bundle_path, "Proof bundle")
     browser_evidence = read_optional_json(browser_evidence_path, "Browser evidence") if browser_evidence_path.exists() else {}
+    responsive_matrix = read_optional_json(responsive_matrix_path, "Responsive matrix") if responsive_matrix_path.exists() else {}
     run_id = args.run_id or execution_plan.get("run_id") or proof_bundle.get("run_id") or "quality-run"
 
     fail_if_errors(validate_locked_spec_obj(spec))
@@ -278,6 +284,8 @@ def command_quality_gate(args: argparse.Namespace) -> dict[str, Any]:
     fail_if_errors(validate_review_report_obj(review_report))
     if browser_evidence:
         fail_if_errors(validate_browser_evidence_obj(browser_evidence))
+    if responsive_matrix:
+        fail_if_errors(validate_responsive_matrix_obj(responsive_matrix))
 
     report = build_quality_report(
         str(run_id),
@@ -297,6 +305,7 @@ def command_quality_gate(args: argparse.Namespace) -> dict[str, Any]:
             "browser_evidence": str(browser_evidence_path),
             "proof_bundle": str(proof_bundle_path),
         },
+        responsive_matrix=responsive_matrix,
     )
     fail_if_errors(validate_quality_report_obj(report))
     write_json(Path(args.out), report)
@@ -436,11 +445,100 @@ def command_init_run(args: argparse.Namespace) -> dict[str, Any]:
 
 def command_runner_step(args: argparse.Namespace) -> dict[str, Any]:
     path = Path(args.state)
+    if not path.exists() and not getattr(args, "init", False):
+        raise LodestarError(f"Runner state not found: {path}. Pass --init to start a new INTAKE run record here.")
     state = read_json(path) if path.exists() else new_runner_state()
     state = apply_runner_event(state, args.event, args.evidence)
     out = Path(args.out) if args.out else path
     write_json(out, state)
     return {"status": "pass", "path": str(out), "runner_state": state["runner_state"], "state": state}
+
+
+PROOF_GATE_VALIDATORS = {
+    "ux_guard": ("guard-report.json", validate_guard_report_obj),
+    "build": ("build-evidence.json", validate_build_evidence_obj),
+    "review": ("review-report.json", validate_review_report_obj),
+    "amendment": ("amendment-request.json", validate_amendment_request_obj),
+    "qa": ("quality-report.json", validate_quality_report_obj),
+}
+
+PROOF_GATE_CANONICAL_ARTIFACTS = {
+    "locked_spec": "locked-spec.json",
+    "task_graph": "task-graph.json",
+    "execution_plan": "execution-plan.json",
+    "ux_guard": "shape-lock.md",
+    "build_evidence": "build-evidence.json",
+    "review_report": "review-report.json",
+    "amendment_request": "amendment-request.json",
+    "quality_report": "quality-report.json",
+    "browser_evidence": "browser-evidence.json",
+    "responsive_matrix": "responsive-matrix.json",
+    "proof_bundle": "proof-bundle.json",
+}
+
+
+def command_proof_gate(args: argparse.Namespace) -> dict[str, Any]:
+    run_dir = Path(args.run_dir)
+    gate = args.gate
+    if gate not in PROOF_BUNDLE_GATES:
+        raise LodestarError(f"Unknown proof gate '{gate}'; expected one of: {', '.join(PROOF_BUNDLE_GATES)}")
+    proof_path = artifact_path(run_dir, args.proof_bundle, "proof-bundle.json")
+    proof_bundle = read_json(proof_path)
+    fail_if_errors(validate_proof_bundle_obj(proof_bundle))
+
+    artifact_ref = args.artifact
+    if args.status == "pass" and gate in PROOF_GATE_VALIDATORS:
+        default_name, validator = PROOF_GATE_VALIDATORS[gate]
+        evidence_path = Path(artifact_ref) if artifact_ref else (run_dir / default_name)
+        if not evidence_path.exists():
+            raise LodestarError(f"Cannot mark proof gate '{gate}' pass: evidence artifact not found: {evidence_path}")
+        evidence_obj = read_json(evidence_path)
+        fail_if_errors(validator(evidence_obj))
+        reported = evidence_obj.get("status")
+        if reported in {"fail", "rejected", "blocked"}:
+            raise LodestarError(f"Cannot mark proof gate '{gate}' pass: {evidence_path} reports status '{reported}'")
+        artifact_ref = str(evidence_path)
+
+    gates = dict(proof_bundle.get("gates", {}))
+    gates[gate] = args.status
+    proof_bundle["gates"] = gates
+    artifacts = dict(proof_bundle.get("artifacts", {}))
+    if artifact_ref:
+        artifacts[gate] = artifact_ref
+    # Auto-record canonical run-dir artifacts so a bundle that reaches all-pass already
+    # carries the artifact references the validator requires.
+    for key, name in PROOF_GATE_CANONICAL_ARTIFACTS.items():
+        if (run_dir / name).exists():
+            artifacts.setdefault(key, name)
+    proof_bundle["artifacts"] = artifacts
+
+    history = list(proof_bundle.get("history", []))
+    history.append({"at": utc_now(), "gate": gate, "status": args.status, "evidence": args.evidence, "artifact": artifact_ref})
+    proof_bundle["history"] = history
+
+    all_gates_pass = all(gates.get(name) == "pass" for name in PROOF_BUNDLE_GATES)
+    required_artifacts_present = all(non_empty_string(artifacts.get(key)) for key in set(QUALITY_REQUIRED_PASS_ARTIFACTS.values()))
+    proof_bundle["status"] = "pass" if (all_gates_pass and required_artifacts_present) else "in-progress"
+    fail_if_errors(validate_proof_bundle_obj(proof_bundle))
+    write_json(proof_path, proof_bundle)
+
+    # Keep the copy embedded in state.json in sync so the two do not desync.
+    state_path = run_dir / "state.json"
+    if state_path.exists():
+        state = read_json(state_path)
+        if isinstance(state.get("proof_bundle"), dict):
+            state["proof_bundle"] = proof_bundle
+            write_json(state_path, state)
+
+    missing_artifacts = sorted(key for key in set(QUALITY_REQUIRED_PASS_ARTIFACTS.values()) if not non_empty_string(artifacts.get(key)))
+    return {
+        "status": "pass",
+        "gate": gate,
+        "gate_status": args.status,
+        "proof_status": proof_bundle["status"],
+        "path": str(proof_path),
+        "missing_artifacts_for_pass": missing_artifacts,
+    }
 
 
 def command_negative_checks(args: argparse.Namespace) -> dict[str, Any]:
@@ -696,12 +794,27 @@ def command_negative_checks(args: argparse.Namespace) -> dict[str, Any]:
         "browser_evidence": "browser-evidence.json",
         "proof_bundle": "proof-bundle.json",
     }
+    quality_base_html = '<!doctype html><html lang="en"><title>Negative QA</title><main><h1>UX Preview Approved</h1></main></html>'
     quality_base_browser = build_browser_evidence(
         run_id="negative-run",
         mode="html",
         source="negative-shape.html",
-        html_text='<!doctype html><html lang="en"><title>Negative QA</title><main><h1>UX Preview Approved</h1></main></html>',
+        html_text=quality_base_html,
         expected_text=["UX Preview Approved"],
+    )
+    quality_base_matrix = build_responsive_matrix(
+        "negative-run",
+        {
+            viewport: build_browser_evidence(
+                run_id="negative-run",
+                mode="html",
+                source="negative-shape.html",
+                html_text=quality_base_html,
+                expected_text=["UX Preview Approved"],
+                viewport_name=viewport,
+            )
+            for viewport in RESPONSIVE_MATRIX_VIEWPORTS
+        },
     )
     quality_negative_cases: list[tuple[str, dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], str, dict[str, Any]]] = []
 
@@ -783,6 +896,7 @@ def command_negative_checks(args: argparse.Namespace) -> dict[str, Any]:
         "# UX Lock\n\nApproved by: negative-check\n",
         quality_base_proof,
         quality_base_browser,
+        responsive_matrix=quality_base_matrix,
     )
 
     failed_browser = build_browser_evidence(

@@ -1,0 +1,10 @@
+{
+  "status": "pass",
+  "scope": "post-implementation UX drift check against the approved shape-lock",
+  "summary": "Delivered surface matches the approved wireframe, design system, and responsive matrix.",
+  "checks": [
+    { "name": "structure_matches_wireframe", "status": "pass", "detail": "Navigation, primary flow, and screens match the approved wireframe." },
+    { "name": "design_system_applied", "status": "pass", "detail": "Tone, density, typography, and color match DESIGN.md." },
+    { "name": "responsive_matrix", "status": "pass", "detail": "Mobile, tablet, and desktop evidence pass." }
+  ]
+}

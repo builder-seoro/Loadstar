@@ -27,6 +27,7 @@
         "IMPLEMENTING",
         "BUILDING",
         "REVIEWING",
+        "MERGE_READY",
         "FIXING",
         "COMPOUNDING",
         "AMENDMENT_PENDING",

@@ -20,20 +20,18 @@ from .builders import *  # noqa: F401,F403
 from .runner import *  # noqa: F401,F403
 
 
-def branch_path_safe(value: str) -> str:
-    allowed = []
-    for char in value.lower().strip():
-        if char.isalnum():
-            allowed.append(char)
-        elif char in ("-", "_", "/", "."):
-            allowed.append(char)
-        elif char.isspace():
-            allowed.append("-")
-    return "".join(allowed).strip("-") or "task"
+def run_git(args: list[str]) -> subprocess.CompletedProcess[str]:
+    # Force utf-8 decoding so non-ASCII branch names / paths do not mojibake or raise
+    # UnicodeDecodeError under a cp949 locale, and turn a missing git binary into a
+    # clean LodestarError instead of a raw WinError 2 traceback.
+    try:
+        return subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    except FileNotFoundError as exc:
+        raise LodestarError("git executable not found on PATH; install Git to use worktree/execution commands") from exc
 
 
 def ensure_git_repo(repo: Path) -> None:
-    result = subprocess.run(["git", "-C", str(repo), "rev-parse", "--is-inside-work-tree"], capture_output=True, text=True)
+    result = run_git(["git", "-C", str(repo), "rev-parse", "--is-inside-work-tree"])
     if result.returncode != 0:
         raise LodestarError(f"Not a Git repository: {repo}")
 
@@ -59,7 +57,7 @@ def create_worktrees(plan: dict[str, Any]) -> None:
         worktree = Path(item["worktree"])
         if worktree.exists():
             continue
-        result = subprocess.run(item["create_command"], capture_output=True, text=True)
+        result = run_git(item["create_command"])
         if result.returncode != 0:
             raise LodestarError(f"Failed to create worktree for {item['task_id']}:\n{result.stderr.strip()}")
 
@@ -207,6 +205,11 @@ def init_execution_run(
 ) -> dict[str, Any]:
     fail_if_errors(validate_task_graph_obj(task_graph, spec))
     run_dir.mkdir(parents=True, exist_ok=True)
+    # Drop task state dirs from a previous task graph so ghost tasks are not resurrected
+    # into the new execution plan by read_all_task_states.
+    stale_tasks_dir = run_dir / "tasks"
+    if stale_tasks_dir.exists():
+        shutil.rmtree(stale_tasks_dir)
     if not worktrees_dir.is_absolute():
         worktrees_dir = repo / worktrees_dir
     task_states = []
@@ -222,6 +225,11 @@ def apply_task_event(task_state: dict[str, Any], event: str, evidence: str, arti
     key = (current, event)
     if key not in TASK_TRANSITIONS:
         raise LodestarError(f"Invalid task transition: {task_state['task_id']} {current} + {event}")
+    if event == "fix-ready" and int(task_state.get("attempts", {}).get("fix_attempts", 0)) >= MAX_FIX_ATTEMPTS:
+        raise LodestarError(
+            f"Task {task_state['task_id']} hit the fix attempt ceiling ({MAX_FIX_ATTEMPTS}); "
+            f"escalate with ce-needed or amendment-needed instead of retrying."
+        )
     next_state, status, attempt_key = TASK_TRANSITIONS[key]
     updated = dict(task_state)
     updated["state"] = next_state
@@ -256,6 +264,10 @@ def apply_task_event(task_state: dict[str, Any], event: str, evidence: str, arti
         updated["gates"]["amendment"] = "pending"
     elif event == "amendment-approved":
         updated["gates"]["amendment"] = "pass"
+    elif event == "amendment-rejected":
+        updated["gates"]["amendment"] = "not-needed"
+    elif event == "unblocked":
+        updated["gates"]["implementation"] = "pending"
     updated["history"].append(
         {
             "at": utc_now(),
@@ -285,7 +297,10 @@ def pending_dependencies(task_state: dict[str, Any], task_states: list[dict[str,
 
 
 def select_next_execution_task(task_states: list[dict[str, Any]]) -> dict[str, Any]:
-    active_states = {"IMPLEMENTING", "BUILDING", "REVIEWING", "FIXING", "COMPOUNDING", "AMENDMENT_PENDING"}
+    # Must match DISPATCHABLE_ACTIVE_STATES (which the batch path uses) or single-task
+    # dispatch deadlocks: MERGE_READY was omitted here, so a reviewer-approved task was
+    # never selectable and the run stalled after the first approval.
+    active_states = set(DISPATCHABLE_ACTIVE_STATES)
     active = [task for task in task_states if task["state"] in active_states]
     if active:
         task = sorted(active, key=lambda item: item["task_id"])[0]
@@ -323,12 +338,23 @@ def select_next_execution_task(task_states: list[dict[str, Any]]) -> dict[str, A
             blocked_candidates.append(
                 {
                     "task_id": task["task_id"],
+                    "state": task["state"],
                     "pending_dependencies": pending_dependencies(task, task_states),
+                }
+            )
+        elif task["state"] not in ("TASK_DONE",):
+            # Surface tasks stuck in a non-ready, non-active, non-done state (e.g. TASK_BLOCKED)
+            # so a blocked run explains itself instead of returning an empty diagnosis.
+            blocked_candidates.append(
+                {
+                    "task_id": task["task_id"],
+                    "state": task["state"],
+                    "pending_dependencies": [],
                 }
             )
     return {
         "status": "blocked",
-        "reason": "no task is runnable until dependencies complete",
+        "reason": "no task is runnable until dependencies complete or blocked tasks are resolved",
         "task_id": None,
         "state": "TASK_BLOCKED",
         "pending_dependencies": blocked_candidates,

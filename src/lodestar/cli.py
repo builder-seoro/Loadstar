@@ -30,6 +30,8 @@ def build_parser() -> argparse.ArgumentParser:
             "locked-spec",
             "task-graph",
             "build-evidence",
+            "merge-evidence",
+            "guard-report",
             "review-report",
             "amendment-request",
             "final-handoff",
@@ -54,7 +56,17 @@ def build_parser() -> argparse.ArgumentParser:
     runner.add_argument("--event", required=True)
     runner.add_argument("--evidence", required=True)
     runner.add_argument("--out")
+    runner.add_argument("--init", action="store_true", help="Create a new INTAKE run record if --state does not exist")
     runner.set_defaults(func=command_runner_step)
+
+    proof_gate = subparsers.add_parser("proof-gate", help="Set a proof-bundle gate to pass/fail with validated evidence")
+    proof_gate.add_argument("--run-dir", required=True, help="Run directory containing proof-bundle.json")
+    proof_gate.add_argument("--gate", required=True, choices=sorted(PROOF_BUNDLE_GATES), help="Proof bundle gate to update")
+    proof_gate.add_argument("--status", required=True, choices=["pass", "fail"], help="New gate status")
+    proof_gate.add_argument("--evidence", required=True, help="Human-readable evidence note recorded in the gate history")
+    proof_gate.add_argument("--artifact", help="Path to the evidence artifact backing this gate")
+    proof_gate.add_argument("--proof-bundle", help="Proof bundle JSON path, default: run-dir/proof-bundle.json")
+    proof_gate.set_defaults(func=command_proof_gate)
 
     negative = subparsers.add_parser("negative-checks", help="Run deterministic negative route checks")
     negative.add_argument("--skills-dir", default="skills")
@@ -84,6 +96,7 @@ def build_parser() -> argparse.ArgumentParser:
     quality_gate.add_argument("--ux-lock", help="UX lock markdown path, default: run-dir/shape-lock.md")
     quality_gate.add_argument("--proof-bundle", help="Proof bundle JSON path, default: run-dir/proof-bundle.json")
     quality_gate.add_argument("--browser-evidence", help="Browser evidence JSON path, default: run-dir/browser-evidence.json when present")
+    quality_gate.add_argument("--responsive-matrix", help="Responsive matrix JSON path, default: run-dir/responsive-matrix.json when present")
     quality_gate.add_argument("--report-only", action="store_true", help="Write the report but do not fail the command on gate failure")
     quality_gate.set_defaults(func=command_quality_gate)
 
@@ -222,7 +235,21 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _force_utf8_streams() -> None:
+    # On a non-UTF-8 console (e.g. cp949 Windows), printing JSON that contains an
+    # emoji or typographic character raises UnicodeEncodeError and the command dies
+    # AFTER writing its artifacts, which the harness misreads as a gate failure.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _force_utf8_streams()
     parser = build_parser()
     args = parser.parse_args(argv)
     try:

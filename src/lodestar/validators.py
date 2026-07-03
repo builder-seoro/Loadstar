@@ -19,6 +19,42 @@ from uuid import uuid4
 from .core import *  # noqa: F401,F403
 
 
+def find_dependency_cycle(edges: dict[str, list[str]]) -> list[str] | None:
+    """Return one dependency cycle as an ordered id path, or None if the graph is acyclic.
+
+    edges maps a task id to the ids it depends on. Iterative DFS with white/gray/black
+    colouring so it stays safe for any graph size.
+    """
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color = {node: WHITE for node in edges}
+    for root in edges:
+        if color[root] != WHITE:
+            continue
+        stack: list[tuple[str, int]] = [(root, 0)]
+        path: list[str] = []
+        while stack:
+            node, index = stack[-1]
+            if index == 0:
+                color[node] = GRAY
+                path.append(node)
+            neighbors = edges.get(node, [])
+            if index < len(neighbors):
+                stack[-1] = (node, index + 1)
+                neighbor = neighbors[index]
+                if neighbor not in color:
+                    continue
+                if color[neighbor] == GRAY:
+                    return path[path.index(neighbor):] + [neighbor]
+                if color[neighbor] == WHITE:
+                    stack.append((neighbor, 0))
+            else:
+                color[node] = BLACK
+                if path and path[-1] == node:
+                    path.pop()
+                stack.pop()
+    return None
+
+
 def validate_locked_spec_obj(spec: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     required = [
@@ -167,6 +203,11 @@ def validate_task_graph_obj(task_graph: dict[str, Any], spec: dict[str, Any] | N
         tid = task.get("id")
         require(errors, non_empty_string(tid), f"{prefix}.id must be non-empty")
         require(errors, tid not in task_ids, f"{prefix}.id is duplicated: {tid}")
+        require(
+            errors,
+            not non_empty_string(tid) or safe_path_segment(tid),
+            f"{prefix}.id must be a safe path segment (letters, digits, dot, dash, underscore; no slashes or '..'): {tid}",
+        )
         if non_empty_string(tid):
             task_ids.add(tid)
         for field in ("title", "branch", "role"):
@@ -182,6 +223,7 @@ def validate_task_graph_obj(task_graph: dict[str, Any], spec: dict[str, Any] | N
         if "merge_risk" in task:
             require(errors, task.get("merge_risk") in MERGE_RISKS, f"{prefix}.merge_risk must be low, medium, or high when provided")
 
+    edges: dict[str, list[str]] = {}
     for index, task in enumerate(tasks):
         if not isinstance(task, dict):
             continue
@@ -192,6 +234,11 @@ def validate_task_graph_obj(task_graph: dict[str, Any], spec: dict[str, Any] | N
                 require(errors, isinstance(dep, str), f"tasks[{index}].dependencies contains a non-string value")
                 require(errors, dep in task_ids, f"tasks[{index}].dependencies references missing task: {dep}")
                 require(errors, dep != tid, f"tasks[{index}] cannot depend on itself")
+            if non_empty_string(tid):
+                edges[tid] = [dep for dep in deps if isinstance(dep, str)]
+
+    cycle = find_dependency_cycle(edges)
+    require(errors, cycle is None, f"task graph has a dependency cycle: {' -> '.join(cycle)}" if cycle else "")
 
     if spec is not None:
         required_covers = spec_cover_ids(spec)
@@ -375,11 +422,17 @@ def validate_execution_plan_obj(plan: dict[str, Any]) -> list[str]:
                     if value is None and key == "merge":
                         value = "pending"
                     require(errors, value in {"pending", "pass", "fail", "not-needed"}, f"{prefix}.gates.{key} is invalid")
+        edges: dict[str, list[str]] = {}
         for index, task in enumerate(tasks):
             if not isinstance(task, dict):
                 continue
             for dep in task.get("dependencies", []):
                 require(errors, dep in task_ids, f"tasks[{index}].dependencies references missing task: {dep}")
+            tid = task.get("task_id")
+            if non_empty_string(tid):
+                edges[tid] = [dep for dep in task.get("dependencies", []) if isinstance(dep, str)]
+        cycle = find_dependency_cycle(edges)
+        require(errors, cycle is None, f"execution plan has a dependency cycle: {' -> '.join(cycle)}" if cycle else "")
 
     metrics = plan.get("metrics")
     require(errors, isinstance(metrics, dict), "execution plan metrics must be an object")
@@ -594,6 +647,43 @@ def validate_build_evidence_obj(evidence: dict[str, Any]) -> list[str]:
         require(errors, key in evidence, f"build evidence missing required field: {key}")
     require(errors, evidence.get("status") in {"pass", "fail"}, "build evidence status must be pass or fail")
     require(errors, isinstance(evidence.get("commands"), list) and bool(evidence.get("commands")), "commands must be non-empty")
+    return errors
+
+
+def validate_merge_evidence_obj(evidence: dict[str, Any]) -> list[str]:
+    """Merge/integration evidence for a MERGE_READY task handled by lodestar-integrator."""
+    errors: list[str] = []
+    for key in ("task_id", "status", "summary"):
+        require(errors, key in evidence, f"merge evidence missing required field: {key}")
+    require(errors, non_empty_string(evidence.get("task_id")), "merge evidence task_id must be non-empty")
+    require(errors, evidence.get("status") in {"pass", "fail"}, "merge evidence status must be pass or fail")
+    require(errors, non_empty_string(evidence.get("summary")), "merge evidence summary must be non-empty")
+    if "conflicts" in evidence:
+        require(errors, isinstance(evidence.get("conflicts"), list), "merge evidence conflicts must be a list")
+    if "branch" in evidence:
+        require(errors, non_empty_string(evidence.get("branch")), "merge evidence branch must be non-empty when provided")
+    if evidence.get("status") == "fail":
+        require(errors, isinstance(evidence.get("conflicts"), list) and bool(evidence.get("conflicts")), "a failing merge must record at least one conflict")
+    return errors
+
+
+def validate_guard_report_obj(report: dict[str, Any]) -> list[str]:
+    """UX guard verdict comparing approved UX (shape-lock) against the delivered surface."""
+    errors: list[str] = []
+    for key in ("status", "summary", "checks"):
+        require(errors, key in report, f"guard report missing required field: {key}")
+    require(errors, report.get("status") in {"pass", "fail", "warning"}, "guard report status must be pass, fail, or warning")
+    require(errors, non_empty_string(report.get("summary")), "guard report summary must be non-empty")
+    checks = report.get("checks")
+    require(errors, isinstance(checks, list) and bool(checks), "guard report checks must be a non-empty list")
+    if isinstance(checks, list):
+        for index, check in enumerate(checks):
+            prefix = f"checks[{index}]"
+            require(errors, isinstance(check, dict), f"{prefix} must be an object")
+            if not isinstance(check, dict):
+                continue
+            require(errors, non_empty_string(check.get("name")), f"{prefix}.name must be non-empty")
+            require(errors, check.get("status") in {"pass", "fail", "warning", "not_applicable"}, f"{prefix}.status is invalid")
     return errors
 
 

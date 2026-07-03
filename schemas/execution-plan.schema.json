@@ -49,6 +49,7 @@
               "IMPLEMENTING",
               "BUILDING",
               "REVIEWING",
+              "MERGE_READY",
               "FIXING",
               "COMPOUNDING",
               "AMENDMENT_PENDING",
@@ -74,11 +75,12 @@
           },
           "gates": {
             "type": "object",
-            "required": ["implementation", "build", "review", "ce", "amendment"],
+            "required": ["implementation", "build", "review", "merge", "ce", "amendment"],
             "properties": {
               "implementation": { "enum": ["pending", "pass", "fail", "not-needed"] },
               "build": { "enum": ["pending", "pass", "fail", "not-needed"] },
               "review": { "enum": ["pending", "pass", "fail", "not-needed"] },
+              "merge": { "enum": ["pending", "pass", "fail", "not-needed"] },
               "ce": { "enum": ["pending", "pass", "fail", "not-needed"] },
               "amendment": { "enum": ["pending", "pass", "fail", "not-needed"] }
             }

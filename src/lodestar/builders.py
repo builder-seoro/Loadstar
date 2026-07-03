@@ -547,6 +547,7 @@ def build_quality_report(
     proof_bundle: dict[str, Any] | None = None,
     browser_evidence: dict[str, Any] | None = None,
     artifacts: dict[str, str] | None = None,
+    responsive_matrix: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     findings: list[dict[str, Any]] = []
     checks: dict[str, dict[str, Any]] = {}
@@ -777,6 +778,30 @@ def build_quality_report(
             "Fix the delivered surface and refresh browser-evidence.json.",
             "browser-evidence.status",
         )
+    # For a browser-rendered surface, responsiveness is a handoff-blocking matrix, not a
+    # late polish pass: mobile/tablet/desktop evidence must be aggregated and passing.
+    responsive_matrix = responsive_matrix or {}
+    if browser_evidence:
+        if not responsive_matrix:
+            regression_status = "fail"
+            quality_finding(
+                findings,
+                "regression_smoke",
+                "high",
+                "Responsive matrix evidence is missing for a browser-rendered product.",
+                "Aggregate mobile, tablet, and desktop browser evidence into responsive-matrix.json before QA.",
+                "responsive-matrix.json",
+            )
+        elif responsive_matrix.get("status") != "pass":
+            regression_status = "fail"
+            quality_finding(
+                findings,
+                "regression_smoke",
+                "high",
+                "Responsive matrix is failing for a browser-rendered product.",
+                "Fix mobile, tablet, and desktop regressions until responsive-matrix.json passes.",
+                "responsive-matrix.status",
+            )
     checks["regression_smoke"] = quality_check(
         regression_status,
         "Regression smoke command evidence is present." if regression_status == "pass" else "Regression smoke evidence is missing.",
