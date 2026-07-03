@@ -125,6 +125,11 @@ Handle silently:
 - A review role may never edit code; route fixes to `lodestar-eva`.
 - Advisor recommendations are never user approval. The user owns product
   intent, UX changes, and amendments.
+- Record each user approval (wireframe, design system, final UI/UX) as an
+  accepted approval line in `decision-log.jsonl` with `gate`, `approver`, and a
+  timestamp (`at`). The spec gate fails an approved-preview claim that has no
+  matching recorded approval, so a preview may never be marked approved without a
+  logged user decision.
 - Never hand off with a failing or missing gate. Report residual risk honestly.
 
 If `$ARGUMENTS` is empty, begin with `lodestar-survey` and ask the user what

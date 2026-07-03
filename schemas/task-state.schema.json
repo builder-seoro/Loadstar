@@ -21,6 +21,7 @@
     "history"
   ],
   "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
     "state": {
       "enum": [
         "TASK_READY",

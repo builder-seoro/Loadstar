@@ -2,6 +2,15 @@
 from __future__ import annotations
 
 
+# Stamped into persisted run/task records so a future engine can detect an old format
+# and migrate instead of hard-failing. next_allowed_events is treated as derived data
+# (recomputed on read), so bumping the transition table does not brick in-flight runs.
+STATE_SCHEMA_VERSION = 1
+
+# The three product approvals a user must give in person; each must be backed by a
+# recorded approval in decision-log.jsonl (approver + timestamp), not just a boolean.
+USER_APPROVAL_GATES = ("wireframe", "design_system", "final_ux")
+
 SKILLS = (
     "lodestar-survey",
     "lodestar-scout",

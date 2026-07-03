@@ -82,6 +82,25 @@ def accepted_decision_count(decision_log: list[dict[str, Any]] | None) -> int:
     return sum(1 for item in decision_log if isinstance(item, dict) and item.get("status") == "accepted")
 
 
+def recorded_approval_gates(decision_log: list[dict[str, Any]] | None) -> set[str]:
+    """User-approval gates backed by an accepted decision-log entry with provenance.
+
+    An approval only counts when it is status=accepted, names one of the user-approval
+    gates, and carries a non-empty approver and timestamp — so an agent cannot claim
+    approval by writing a bare boolean without a recorded human decision.
+    """
+    gates: set[str] = set()
+    if not decision_log:
+        return gates
+    for item in decision_log:
+        if not isinstance(item, dict) or item.get("status") != "accepted":
+            continue
+        gate = item.get("gate")
+        if gate in USER_APPROVAL_GATES and non_empty_string(item.get("approver")) and non_empty_string(item.get("at")):
+            gates.add(str(gate))
+    return gates
+
+
 def read_decision_log(path: Path | None) -> list[dict[str, Any]]:
     if path is None:
         return []
@@ -1366,6 +1385,23 @@ def build_spec_gate_report(
     if decision_log is not None and len(decision_log) > 0 and accepted_decision_count(decision_log) == 0:
         ux_status = "fail"
         finding(findings, "ux_flow", "high", "Decision log has no accepted decisions.", "Record the accepted UX/product decisions before task split.", "decision-log")
+    # Approval provenance: claiming an approved preview requires a recorded user approval
+    # (approver + timestamp) for each of wireframe, design system, and final UI/UX, so the
+    # gate cannot be satisfied by a bare approved_preview boolean an agent set on its own.
+    if isinstance(product_shape, dict) and product_shape.get("approved_preview") is True:
+        recorded = recorded_approval_gates(decision_log)
+        for gate in USER_APPROVAL_GATES:
+            if gate not in recorded:
+                ux_status = "fail"
+                label = gate.replace("_", " ")
+                finding(
+                    findings,
+                    "ux_flow",
+                    "critical",
+                    f"Approved preview claimed but no recorded {label} approval in decision-log.",
+                    f"Record the user's {label} approval with approver and timestamp in decision-log.jsonl before locking the spec.",
+                    "decision-log",
+                )
     categories["ux_flow"] = {
         "status": ux_status,
         "summary": category_summary(ux_status, "Approved product shape and UX evidence are present.", "UX/product-shape evidence is incomplete."),

@@ -4,6 +4,7 @@
   "type": "object",
   "required": ["run_id", "spec_id", "status", "upstream_source", "task_count", "tasks", "metrics"],
   "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
     "status": { "enum": ["ready", "in-progress", "done", "blocked"] },
     "upstream_source": {
       "type": "object",

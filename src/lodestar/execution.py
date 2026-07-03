@@ -68,6 +68,7 @@ def task_state_path(run_dir: Path, task_id: str) -> Path:
 
 def new_task_state(task: dict[str, Any], run_id: str, spec_id: str, worktree: Path) -> dict[str, Any]:
     state = {
+        "schema_version": STATE_SCHEMA_VERSION,
         "run_id": run_id,
         "spec_id": spec_id,
         "task_id": task["id"],
@@ -142,6 +143,7 @@ def execution_metrics(task_states: list[dict[str, Any]]) -> dict[str, int]:
 
 def build_execution_plan(run_id: str, spec_id: str, run_dir: Path, task_states: list[dict[str, Any]]) -> dict[str, Any]:
     plan = {
+        "schema_version": STATE_SCHEMA_VERSION,
         "run_id": run_id,
         "spec_id": spec_id,
         "status": execution_status_from_states(task_states),
@@ -167,8 +169,17 @@ def write_task_state(run_dir: Path, task_state: dict[str, Any]) -> None:
     write_json(task_state_path(run_dir, task_state["task_id"]), task_state)
 
 
+def heal_task_state(state: dict[str, Any]) -> dict[str, Any]:
+    # next_allowed_events is derived from the current transition table. Recompute it on
+    # read so a run written by an older engine (with a since-changed event set) is not
+    # rejected by validation; the stored value is treated as a cache, not a source.
+    if isinstance(state, dict) and state.get("state") in TASK_STATES:
+        state["next_allowed_events"] = task_allowed_events(state["state"])
+    return state
+
+
 def read_task_state(run_dir: Path, task_id: str) -> dict[str, Any]:
-    state = read_json(task_state_path(run_dir, task_id))
+    state = heal_task_state(read_json(task_state_path(run_dir, task_id)))
     fail_if_errors(validate_task_state_obj(state))
     return state
 
@@ -179,7 +190,7 @@ def read_all_task_states(run_dir: Path) -> list[dict[str, Any]]:
         raise LodestarError(f"No task states found in {tasks_dir}")
     states = []
     for state_file in sorted(tasks_dir.glob("*/state.json")):
-        state = read_json(state_file)
+        state = heal_task_state(read_json(state_file))
         fail_if_errors(validate_task_state_obj(state))
         states.append(state)
     if not states:

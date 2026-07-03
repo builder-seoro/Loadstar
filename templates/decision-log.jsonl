@@ -1,1 +1,4 @@
 {"id":"D1","class":"taste","question":"Is the UX/product shape approved for implementation?","recommendation":"Approve the shown preview before locking the spec.","decision":"approved","source":"user","status":"accepted"}
+{"status":"accepted","kind":"approval","gate":"wireframe","approver":"user","at":"2026-01-01T00:00:00+00:00","artifact":"wireframe.html"}
+{"status":"accepted","kind":"approval","gate":"design_system","approver":"user","at":"2026-01-01T00:00:05+00:00","artifact":"DESIGN.md"}
+{"status":"accepted","kind":"approval","gate":"final_ux","approver":"user","at":"2026-01-01T00:00:10+00:00","artifact":"shape.html"}

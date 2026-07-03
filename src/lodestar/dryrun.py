@@ -402,10 +402,16 @@ def run_dry_run(out_dir: Path) -> dict[str, Any]:
         "# Visual QA\n\nScreenshots: mobile, tablet, desktop dry-run evidence.\n\nFailures: none after dry-run inspection.\n\nFixes: none required.\n\nMobile: pass.\nTablet: pass.\nDesktop: pass.\n\nResult: pass\n",
     )
     write_text(out_dir / "shape-lock.md", "# UX Lock\n\nApproved wireframe: wireframe.html\nApproved design system: DESIGN.md\nApproved design preview: design-preview.html\nApproved final UI/UX preview: shape.html\nApproved visual QA: visual-qa.md\n")
+    approval_log = [
+        {"status": "accepted", "kind": "approval", "gate": "wireframe", "approver": "dry-run-user", "at": utc_now(), "artifact": "wireframe.html"},
+        {"status": "accepted", "kind": "approval", "gate": "design_system", "approver": "dry-run-user", "at": utc_now(), "artifact": "DESIGN.md"},
+        {"status": "accepted", "kind": "approval", "gate": "final_ux", "approver": "dry-run-user", "at": utc_now(), "artifact": "shape.html"},
+    ]
+    write_text(out_dir / "decision-log.jsonl", "".join(json.dumps(entry, ensure_ascii=False) + "\n" for entry in approval_log))
     spec_gate_report = build_spec_gate_report(
         spec,
         "# UX Lock\n\nApproved wireframe: wireframe.html\nApproved design system: DESIGN.md\nApproved design preview: design-preview.html\nApproved final UI/UX preview: shape.html\nApproved visual QA: visual-qa.md\n\nApproved by: dry-run\n",
-        [{"status": "accepted", "decision": "approved", "source": "dry-run"}],
+        approval_log,
     )
     fail_if_errors(validate_spec_gate_report_obj(spec_gate_report))
     write_json(out_dir / "locked-spec.json", spec)
@@ -567,6 +573,7 @@ def run_dry_run(out_dir: Path) -> dict[str, Any]:
             "shape.html",
             "visual-qa.md",
             "shape-lock.md",
+            "decision-log.jsonl",
             "checklist-report.json",
             "task-graph.json",
             "execution-plan.json",

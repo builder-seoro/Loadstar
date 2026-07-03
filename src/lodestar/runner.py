@@ -20,7 +20,7 @@ from .validators import *  # noqa: F401,F403
 
 
 def new_runner_state() -> dict[str, Any]:
-    return {"runner_state": "INTAKE", "history": []}
+    return {"schema_version": STATE_SCHEMA_VERSION, "runner_state": "INTAKE", "history": []}
 
 
 def new_proof_bundle(run_id: str, status: str = "in-progress") -> dict[str, Any]:
