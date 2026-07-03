@@ -138,6 +138,12 @@ Then run:
 /lodestar build me a waitlist site with email capture and an admin view
 ```
 
+The deterministic gate commands need the Python engine to be reachable. Run it
+from a checkout with `python scripts/lodestar.py`, or install it from the git
+URL (see [Local Engine Commands](#local-engine-commands)). The PyPI name
+`lodestar` belongs to an unrelated package, so do not install by bare index
+name.
+
 ### OpenAI Codex
 
 Clone the plugin:
@@ -163,10 +169,15 @@ python scripts/lodestar.py dry-run --out ./.lodestar/dry-run
 python scripts/lodestar.py negative-checks
 ```
 
-After installing the package locally:
+To install the `lodestar` command instead of running from a checkout, install
+straight from the git URL. The PyPI name `lodestar` is taken by an unrelated
+package, so install by git URL (which bypasses the index) rather than by bare
+index name — `uvx lodestar` / `pip install lodestar` would fetch the wrong
+package.
 
 ```bash
-pip install -e .
+uvx --from git+https://github.com/builder-seoro/lodestar lodestar --help
+pip install git+https://github.com/builder-seoro/lodestar
 lodestar dry-run --out ./.lodestar/dry-run
 ```
 
