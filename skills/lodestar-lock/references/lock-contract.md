@@ -29,6 +29,11 @@ reject unresolved product-impacting ambiguity.
 - passing `visual-qa.md`
 - `references/upstream-map.json`
 
+`decision-log.jsonl` is an append-only JSONL file produced upstream (by
+shakedown/triage) where each accepted decision is a line carrying at least a
+`status: "accepted"` field; the spec gate reads it via
+`--decision-log decision-log.jsonl`.
+
 ## Required Output
 
 Produce `locked-spec.json` with enough evidence for the next Lodestar skill to

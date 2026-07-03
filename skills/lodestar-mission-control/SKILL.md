@@ -13,9 +13,10 @@ product-level decisions, never mechanical implementation choices.
 
 First, set the run mode: ask whether the user wants **guided** (check each
 product decision) or **express** (take recommendations automatically, stop only
-for cost, irreversible, safety, wireframe approval, design-system approval, and
-final UI/UX approval). Then invoke the `lodestar-*` skills in order. Never skip
-a gate.
+for cost, irreversible/safety-destructive, user-challenge, amendments, wireframe
+approval, design-system approval, and final UI/UX approval). Express mode can
+never auto-resolve a user-challenge decision — a decision about what the product
+*is*. Then invoke the `lodestar-*` skills in order. Never skip a gate.
 
 1. Discovery: `lodestar-survey` -> `lodestar-scout` -> `lodestar-shakedown` ->
    `lodestar-manifest`.

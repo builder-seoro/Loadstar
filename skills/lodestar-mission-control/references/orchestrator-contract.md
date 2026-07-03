@@ -12,8 +12,10 @@ Ask the user once, at the start, how hands-on they want to be:
 - **Guided** (default): surface every genuine product decision as a decision
   card and wait for the user.
 - **Express / Autopilot**: take the recommended option on ordinary product
-  decisions and only stop for safety, cost, hard-to-reverse choices, wireframe
-  approval, design-system approval, final UI/UX approval, and amendments.
+  decisions and only stop for cost, irreversible/safety-destructive choices,
+  user-challenge, amendments, wireframe approval, design-system approval, and
+  final UI/UX approval. Express mode can never auto-resolve a user-challenge
+  decision — a decision about what the product *is*.
 
 In both modes, wireframe approval, design-system approval, and final UI/UX
 approval are required before any implementation starts.

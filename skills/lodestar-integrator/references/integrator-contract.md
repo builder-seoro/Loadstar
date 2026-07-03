@@ -50,9 +50,53 @@ The runner event sequence is:
 - `build-pass` routes the task to reviewer.
 - `build-fail` routes the task to fixer.
 
+### Recording the outcome
+
+After producing `build-evidence.json`, record the result with the engine:
+
+```powershell
+python scripts/lodestar.py task-event --run-dir .lodestar/runs/<run-id> --task-id <task-id> --event <event> --evidence "..." --artifact <path-to-output-artifact>
+```
+
+Valid `<event>` values for the builder role are `build-pass` and `build-fail`.
+
+## Merge / Integration pass
+
+The engine routes the `MERGE_READY` task state to `lodestar-integrator` with role
+`integrator`. This is a separate dispatch from the builder role above.
+
+- When dispatched for a `MERGE_READY` task, integrate the reviewed task branch:
+  merge the worktree branch according to its `merge_risk`.
+- Produce `merge-evidence.json` and validate it:
+
+  ```powershell
+  python scripts/lodestar.py validate merge-evidence .lodestar/runs/<run-id>/merge-evidence.json
+  ```
+
+  A template exists at `templates/merge-evidence.json`. Required fields are
+  `task_id`, `status` (`pass` or `fail`), and `summary`; optional fields are
+  `branch`, `base`, `conflicts`, and `commands`. A failing merge must record at
+  least one conflict.
+
+The runner event sequence for this state is:
+
+- `merge-pass` routes the task to QA.
+- `merge-conflict` routes the task to fixer.
+- `ce-needed` routes the task to debrief.
+
+Record the outcome with the engine:
+
+```powershell
+python scripts/lodestar.py task-event --run-dir .lodestar/runs/<run-id> --task-id <task-id> --event <event> --evidence "..." --artifact <path-to-output-artifact>
+```
+
+Valid `<event>` values for the integrator role are `merge-pass`, `merge-conflict`,
+and `ce-needed`.
+
 ## Gate Rules
 
-- Builder may diagnose but does not silently rewrite implementation.
+- Builder may diagnose but does not silently rewrite implementation. Exception:
+  resolving merge conflicts during the integrator merge pass IS permitted.
 - Build pass is required before normal review.
 - Evidence must be concrete.
 - Build evidence must be strong enough for the Quality/QA adapter to evaluate

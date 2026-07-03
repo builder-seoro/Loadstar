@@ -42,6 +42,16 @@ The runner event sequence is:
 - `implementation-ready` when implementation handoff is ready for builder.
 - `implementation-blocked` only when the task cannot continue without new context.
 
+### Recording the outcome
+
+After producing `implementation-handoff.json`, record the result with the engine:
+
+```powershell
+python scripts/lodestar.py task-event --run-dir .lodestar/runs/<run-id> --task-id <task-id> --event <event> --evidence "..." --artifact <path-to-output-artifact>
+```
+
+Valid `<event>` values for this role are `implementation-ready` and `implementation-blocked`.
+
 ## Gate Rules
 
 - Do not change product intent.

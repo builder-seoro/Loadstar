@@ -21,14 +21,16 @@ Before anything else, ask one plain-language question:
 > How hands-on do you want to be?
 >
 > - Guided: I will check important product decisions with you.
-> - Express: I will use my recommended choices and only stop for cost, risk,
->   hard-to-undo changes, wireframe approval, design-system approval, or final
->   UI/UX approval.
+> - Express: I will use my recommended choices and only stop for cost,
+>   irreversible/safety-destructive changes, user-challenge, amendments,
+>   wireframe approval, design-system approval, or final UI/UX approval.
 
 Default to Guided if the user does not choose. In Express mode, take the
 recommended option for taste and ordinary product decisions. Still always stop
-for user-challenge, safety-destructive, cost, irreversible actions, wireframe
-approval, design-system approval, and final UI/UX approval.
+for cost, irreversible/safety-destructive, user-challenge, amendments, wireframe
+approval, design-system approval, and final UI/UX approval. Express mode can
+never auto-resolve a user-challenge decision — a decision about what the product
+*is*.
 
 ## How to ask the user
 

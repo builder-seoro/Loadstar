@@ -12,6 +12,8 @@ Use the upstream Lodestar artifacts and evidence required by this workflow step.
 
 Produce `shakedown-decisions.jsonl` with enough evidence for the next Lodestar skill to continue without re-interrogating product intent.
 
+Also append every accepted decision to `.lodestar/runs/<run-id>/decision-log.jsonl` as one JSON object per line, each including at least `{"status": "accepted", "decision": "...", "source": "..."}`. A template exists at `templates/decision-log.jsonl`. This append-only file is the canonical decision log the spec gate reads via `--decision-log decision-log.jsonl`, so downstream lock and checklist skills can verify accepted decisions.
+
 ## Gate Rules
 
 - If a question can be answered from repo evidence, inspect evidence instead.

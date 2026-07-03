@@ -65,9 +65,24 @@ Browser evidence contributes to UX alignment, regression smoke, and
 accessibility baseline checks. Missing or failed browser evidence blocks final
 handoff.
 
+## Proof Bundle Gates
+
+Proof-bundle gates are advanced with the engine command, not hand-edited:
+
+```powershell
+python scripts/lodestar.py proof-gate --run-dir .lodestar/runs/<run-id> --gate <ux_guard|build|review|amendment|integration|qa|proof> --status pass --evidence "..." --artifact <path>
+```
+
+The command validates the backing artifact before flipping the gate
+(`build`, `review`, `qa`, and `ux_guard` gates require a valid, non-failing
+evidence artifact) and only sets the bundle status to `pass` once all gates
+pass and every required artifact is recorded.
+
 ## Gate Rules
 
 - Critical or high findings make the report fail.
+- Proof-bundle gates must be `pass`, and each such `pass` must be set through the
+  `proof-gate` command above so its backing artifact is validated.
 - Passing quality reports route to `lodestar-dock`.
 - Final handoff requires `browser-evidence.json` in the proof bundle artifacts.
 - Failed implementation evidence routes to `lodestar-eva`.
