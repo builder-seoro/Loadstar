@@ -32,7 +32,7 @@ Produce `debrief.json` and `debrief-brief.md` with enough evidence for the next 
 The adapter command is:
 
 ```powershell
-python scripts/lodestar.py ce-synthesize --run-dir .lodestar/runs/<run-id> --out .lodestar/runs/<run-id>/debrief.json --brief-out .lodestar/runs/<run-id>/debrief-brief.md
+lodestar ce-synthesize --run-dir .lodestar/runs/<run-id> --out .lodestar/runs/<run-id>/debrief.json --brief-out .lodestar/runs/<run-id>/debrief-brief.md
 ```
 
 The synthesis JSON must include:

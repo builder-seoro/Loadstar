@@ -28,4 +28,4 @@ browser/screenshot evidence. Supply only the inputs for your mode.
 
 ## Output
 
-Produce `guard-report.json` and validate it with `python scripts/lodestar.py validate guard-report <path>` (template at `templates/guard-report.json`; required fields `status`, `summary`, and a non-empty `checks` list). Advance the proof-bundle gate with `python scripts/lodestar.py proof-gate --run-dir .lodestar/runs/<run-id> --gate ux_guard --status pass --evidence "..." --artifact .lodestar/runs/<run-id>/guard-report.json`. Read `references/guard-contract.md` for the exact contract.
+Produce `guard-report.json` and validate it with `lodestar validate guard-report <path>` (template at `templates/guard-report.json`; required fields `status`, `summary`, and a non-empty `checks` list). Advance the proof-bundle gate with `lodestar proof-gate --run-dir .lodestar/runs/<run-id> --gate ux_guard --status pass --evidence "..." --artifact .lodestar/runs/<run-id>/guard-report.json`. Read `references/guard-contract.md` for the exact contract.

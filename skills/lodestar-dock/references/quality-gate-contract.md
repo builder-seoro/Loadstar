@@ -8,13 +8,13 @@ handoff blocker.
 ## Adapter Command
 
 ```powershell
-python scripts/lodestar.py quality-gate --run-dir .lodestar/runs/<run-id> --out .lodestar/runs/<run-id>/quality-report.json
+lodestar quality-gate --run-dir .lodestar/runs/<run-id> --out .lodestar/runs/<run-id>/quality-report.json
 ```
 
 Collect browser evidence before final QA when the product has a renderable UI:
 
 ```powershell
-python scripts/lodestar.py browser-collect --url http://127.0.0.1:3000 --expect-text "Approved surface text" --out .lodestar/runs/<run-id>/browser-evidence.json
+lodestar browser-collect --url http://127.0.0.1:3000 --expect-text "Approved surface text" --out .lodestar/runs/<run-id>/browser-evidence.json
 ```
 
 If a real browser tool produced a rendered snapshot, use `--snapshot` instead
@@ -70,7 +70,7 @@ handoff.
 Proof-bundle gates are advanced with the engine command, not hand-edited:
 
 ```powershell
-python scripts/lodestar.py proof-gate --run-dir .lodestar/runs/<run-id> --gate <ux_guard|build|review|amendment|integration|qa|proof> --status pass --evidence "..." --artifact <path>
+lodestar proof-gate --run-dir .lodestar/runs/<run-id> --gate <ux_guard|build|review|amendment|integration|qa|proof> --status pass --evidence "..." --artifact <path>
 ```
 
 The command validates the backing artifact before flipping the gate

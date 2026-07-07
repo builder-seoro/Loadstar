@@ -39,11 +39,11 @@ Final UI/UX approval is blocked until the matrix and visual QA pass.
 Use this command pattern instead of manually reasoning about every viewport:
 
 ```text
-python scripts/lodestar.py browser-collect --viewport mobile --html shape.html --expect-text "<key text>" --screenshot shape-mobile.png --out browser-evidence-mobile.json
-python scripts/lodestar.py browser-collect --viewport tablet --html shape.html --expect-text "<key text>" --screenshot shape-tablet.png --out browser-evidence-tablet.json
-python scripts/lodestar.py browser-collect --viewport desktop --html shape.html --expect-text "<key text>" --screenshot shape-desktop.png --out browser-evidence.json
-python scripts/lodestar.py responsive-matrix --mobile browser-evidence-mobile.json --tablet browser-evidence-tablet.json --desktop browser-evidence.json --require-screenshots --out responsive-matrix.json
-python scripts/lodestar.py design-gate --design DESIGN.md --shape shape.html --visual-qa visual-qa.md --responsive-matrix responsive-matrix.json --require-visual-qa --require-responsive-matrix
+lodestar browser-collect --viewport mobile --html shape.html --expect-text "<key text>" --screenshot shape-mobile.png --out browser-evidence-mobile.json
+lodestar browser-collect --viewport tablet --html shape.html --expect-text "<key text>" --screenshot shape-tablet.png --out browser-evidence-tablet.json
+lodestar browser-collect --viewport desktop --html shape.html --expect-text "<key text>" --screenshot shape-desktop.png --out browser-evidence.json
+lodestar responsive-matrix --mobile browser-evidence-mobile.json --tablet browser-evidence-tablet.json --desktop browser-evidence.json --require-screenshots --out responsive-matrix.json
+lodestar design-gate --design DESIGN.md --shape shape.html --visual-qa visual-qa.md --responsive-matrix responsive-matrix.json --require-visual-qa --require-responsive-matrix
 ```
 
 ## Generation Rules

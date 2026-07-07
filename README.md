@@ -101,9 +101,19 @@ flowchart TB
 
 ### Claude Code (recommended)
 
+Install the plugin:
+
 ```
 /plugin marketplace add builder-seoro/lodestar
 /plugin install lodestar@lodestar
+```
+
+Every gate is enforced by the zero-dependency `lodestar` engine, so install its
+CLI once as well (needs Python 3.10+; nothing else to configure):
+
+```bash
+uv tool install git+https://github.com/builder-seoro/lodestar.git
+# or, with pip:  pip install git+https://github.com/builder-seoro/lodestar.git
 ```
 
 Then start a run from a single request:
@@ -116,6 +126,8 @@ Then start a run from a single request:
 
 ```bash
 git clone https://github.com/builder-seoro/lodestar.git ~/.codex/plugins/lodestar
+# the gates need the `lodestar` CLI on PATH (Python 3.10+):
+uv tool install git+https://github.com/builder-seoro/lodestar.git
 ```
 
 Then in Codex, invoke the **Lodestar Mission Control** skill (or ask: "use Lodestar to

@@ -50,7 +50,7 @@ Everything in the pre-lock list, plus the delivered-surface evidence:
 Produce `guard-report.json` and validate it with:
 
 ```powershell
-python scripts/lodestar.py validate guard-report .lodestar/runs/<run-id>/guard-report.json
+lodestar validate guard-report .lodestar/runs/<run-id>/guard-report.json
 ```
 
 A template exists at `templates/guard-report.json`. Required fields:
@@ -63,7 +63,7 @@ A template exists at `templates/guard-report.json`. Required fields:
 Advance the proof-bundle `ux_guard` gate from this report:
 
 ```powershell
-python scripts/lodestar.py proof-gate --run-dir .lodestar/runs/<run-id> --gate ux_guard --status pass --evidence "UX guard passed against shape-lock.md" --artifact .lodestar/runs/<run-id>/guard-report.json
+lodestar proof-gate --run-dir .lodestar/runs/<run-id> --gate ux_guard --status pass --evidence "UX guard passed against shape-lock.md" --artifact .lodestar/runs/<run-id>/guard-report.json
 ```
 
 Carry enough evidence for the next Lodestar skill to continue without

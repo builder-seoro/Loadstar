@@ -59,7 +59,7 @@ Never make the user manage the internal workflow.
 ## Internal run order
 
 Drive the pipeline by invoking the `lodestar-*` skills in order. Do not skip
-gates. Each phase has a non-negotiable gate enforced by `scripts/lodestar.py`.
+gates. Each phase has a non-negotiable gate enforced by the `lodestar` engine.
 
 1. **Discovery** -> `lodestar-survey` -> `lodestar-scout` ->
    `lodestar-shakedown` -> `lodestar-manifest`.

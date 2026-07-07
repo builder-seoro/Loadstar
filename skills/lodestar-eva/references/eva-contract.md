@@ -23,7 +23,7 @@ The runner event sequence is:
 After producing `fix-handoff.json`, record the result with the engine:
 
 ```powershell
-python scripts/lodestar.py task-event --run-dir .lodestar/runs/<run-id> --task-id <task-id> --event <event> --evidence "..." --artifact <path-to-output-artifact>
+lodestar task-event --run-dir .lodestar/runs/<run-id> --task-id <task-id> --event <event> --evidence "..." --artifact <path-to-output-artifact>
 ```
 
 Valid `<event>` values for this role are `fix-ready`, `ce-needed`, and `amendment-needed`.

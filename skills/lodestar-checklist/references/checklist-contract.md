@@ -37,7 +37,7 @@ Produce `checklist-report.json` with enough evidence for the next Lodestar skill
 The deterministic local adapter command is:
 
 ```powershell
-python scripts/lodestar.py spec-gate --spec locked-spec.json --ux-lock shape-lock.md --decision-log decision-log.jsonl --out checklist-report.json
+lodestar spec-gate --spec locked-spec.json --ux-lock shape-lock.md --decision-log decision-log.jsonl --out checklist-report.json
 ```
 
 Default behavior writes the report and exits non-zero when the gate fails.

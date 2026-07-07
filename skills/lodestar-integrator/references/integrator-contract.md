@@ -34,7 +34,7 @@ Use the browser collector when there is an HTML preview, local app URL, or other
 renderable target:
 
 ```powershell
-python scripts/lodestar.py browser-collect --url http://127.0.0.1:3000 --expect-text "Approved surface text" --out .lodestar/runs/<run-id>/browser-evidence.json
+lodestar browser-collect --url http://127.0.0.1:3000 --expect-text "Approved surface text" --out .lodestar/runs/<run-id>/browser-evidence.json
 ```
 
 When Playwright, Codex Browser, or another real browser tool has already
@@ -42,7 +42,7 @@ captured rendered DOM, console, and screenshot evidence, pass that handoff as a
 snapshot:
 
 ```powershell
-python scripts/lodestar.py browser-collect --snapshot .lodestar/runs/<run-id>/browser-snapshot.json --expect-text "Approved surface text" --out .lodestar/runs/<run-id>/browser-evidence.json
+lodestar browser-collect --snapshot .lodestar/runs/<run-id>/browser-snapshot.json --expect-text "Approved surface text" --out .lodestar/runs/<run-id>/browser-evidence.json
 ```
 
 The runner event sequence is:
@@ -55,7 +55,7 @@ The runner event sequence is:
 After producing `build-evidence.json`, record the result with the engine:
 
 ```powershell
-python scripts/lodestar.py task-event --run-dir .lodestar/runs/<run-id> --task-id <task-id> --event <event> --evidence "..." --artifact <path-to-output-artifact>
+lodestar task-event --run-dir .lodestar/runs/<run-id> --task-id <task-id> --event <event> --evidence "..." --artifact <path-to-output-artifact>
 ```
 
 Valid `<event>` values for the builder role are `build-pass` and `build-fail`.
@@ -70,7 +70,7 @@ The engine routes the `MERGE_READY` task state to `lodestar-integrator` with rol
 - Produce `merge-evidence.json` and validate it:
 
   ```powershell
-  python scripts/lodestar.py validate merge-evidence .lodestar/runs/<run-id>/merge-evidence.json
+  lodestar validate merge-evidence .lodestar/runs/<run-id>/merge-evidence.json
   ```
 
   A template exists at `templates/merge-evidence.json`. Required fields are
@@ -87,7 +87,7 @@ The runner event sequence for this state is:
 Record the outcome with the engine:
 
 ```powershell
-python scripts/lodestar.py task-event --run-dir .lodestar/runs/<run-id> --task-id <task-id> --event <event> --evidence "..." --artifact <path-to-output-artifact>
+lodestar task-event --run-dir .lodestar/runs/<run-id> --task-id <task-id> --event <event> --evidence "..." --artifact <path-to-output-artifact>
 ```
 
 Valid `<event>` values for the integrator role are `merge-pass`, `merge-conflict`,
